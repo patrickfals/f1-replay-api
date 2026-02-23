@@ -26,11 +26,14 @@ def apply_event(state: Dict[str, Dict[str, Any]], event: Dict[str, Any]) -> None
         state[driver]["position"] = event["position"]
 
     elif event_type == "PIT":
-        # Some pit events include a running pit_count; if not, we increment by 1.
-        if "pit_count" in event:
-            state[driver]["pits"] = int(event.get("pit_count") or 0)
-        else:
+        # Some pit events include a running pit_count.
+        # If missing, count pit event as +1.
+        pit_count = event.get("pit_count")
+
+        if pit_count is None:
             state[driver]["pits"] += 1
+        else:
+            state[driver]["pits"] = int(pit_count)
 
 
 def replay(events: List[Dict[str, Any]], target_time_sec: float) -> Dict[str, Dict[str, Any]]:
