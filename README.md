@@ -45,6 +45,11 @@ This separation keeps API routing, database access, and replay logic organized a
 
 ---
 
+## Screenshot
+
+### FastAPI Docs (Swagger)
+![FastAPI Docs](screenshots/fastapi_docs.png)
+
 ## Running the Application
 
 Start the server:
@@ -103,6 +108,19 @@ The Node service:
 - Exposes REST endpoints (/health, /sessions, /leaderboard)
 - Uses NPM for dependency management
 - Demonstrates writing SQL queries in a Node environment
+
+### Run the Node API (Optional)
+
+From the project root:
+
+    cd node-api
+    npm install
+    npm start
+
+Then open:
+
+- http://localhost:3000/health
+- http://localhost:3000/sessions
 
 ---
 
