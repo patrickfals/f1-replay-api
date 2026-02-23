@@ -1,0 +1,19 @@
+{
+  "name": "api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+  "start": "node server.js",
+  "dev": "node server.js",
+  "lint": "node -c server.js"
+},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "better-sqlite3": "^12.6.2",
+    "express": "^4.22.1"
+  }
+}
