@@ -50,6 +50,12 @@ This separation keeps API routing, database access, and replay logic organized a
 ### FastAPI Docs (Swagger)
 ![FastAPI Docs](screenshots/fastapi_docs.png)
 
+### Python API Leaderboard Example
+![Python Leaderboard Example](screenshots/python_leaderboard.png)
+
+### Node.js Companion API Example
+![Node API Sessions Example](screenshots/node_leaderboard.png)
+
 ## Running the Application
 
 Start the server:
