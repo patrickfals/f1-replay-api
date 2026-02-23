@@ -24,10 +24,10 @@ When a client requests a specific timestamp, the application rebuilds the race s
 
 Client -> FastAPI (app.py) -> Services -> Repository -> Replay Logic
 
-- app.py – Defines API routes and coordinates logic
-- services/ – Handles OpenF1 API requests
-- repo/ – Contains database queries (SQLite)
-- replay/ – Contains logic for rebuilding race state
+- `app.py` – Defines API routes and coordinates logic
+- `services/` – Handles OpenF1 API requests
+- `repo/` – Contains database queries (SQLite)
+- `replay/` – Contains logic for rebuilding race state
 
 This separation keeps API routing, database access, and replay logic organized and easier to maintain.
 
@@ -89,6 +89,29 @@ Open API Docs:
 5. View leaderboard:
 
     GET /leaderboard?session_id=abu_dhabi_2025&time_sec=1200
+
+---
+
+## API Endpoints
+
+### Core Endpoints
+
+These routes are the main project workflow (ingestion + replay/query):
+
+- `GET /health` - Basic API health check
+- `GET /sessions` - List available sessions stored in the database
+- `POST /ingest/openf1` - Ingest race events from the OpenF1 API
+- `POST /ingest/openf1/drivers` - Ingest driver metadata (names/codes) from OpenF1
+- `GET /state` - Rebuild race state at a given timestamp
+- `GET /leaderboard` - Return leaderboard data at a given timestamp
+
+### Utility / Debug Endpoints
+
+These routes are for local testing and debugging during development:
+
+- `POST /reset` - Clear stored data for a session before re-ingesting
+- `GET /events` - Inspect stored events for a session
+- `POST /seed` - Insert small demo/test data for quick local testing
 
 ---
 
