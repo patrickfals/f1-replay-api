@@ -1,8 +1,8 @@
 # F1 Replay API
 
-This is a backend project that ingests real Formula 1 race data from the OpenF1 API and allows querying the race state at a specific point in time.
+Backend project that ingests real Formula 1 race data from the OpenF1 API and reconstructs race state at a specific point in time.
 
-The goal of this project is to practice building REST APIs, working with external APIs, storing event data in a database, and reconstructing state from stored events.
+This project focuses on backend engineering concepts such as external API ingestion, event-based data storage, SQL-backed querying, and reconstructing state from historical events.
 
 The project was developed incrementally using Git for version control and GitHub Actions for continuous integration.
 
@@ -17,6 +17,8 @@ Instead of storing the full race state directly, this system stores individual r
 - PIT
 
 When a client requests a specific timestamp, the application rebuilds the race state using all events up to that time.
+
+This approach highlights API design, database-backed event storage, and replaying historical data to reconstruct application state.
 
 ---
 
@@ -38,14 +40,14 @@ This separation keeps API routing, database access, and replay logic organized a
 - Ingest real race data from OpenF1
 - Store lap, position, and pit events in SQLite
 - Rebuild race state at any timestamp
-- Generate a dynamic leaderboard
+- Generate a dynamic leaderboard for a given timestamp
 - Ingest driver metadata for names/codes
 - Safely handle missing position updates
 - Basic validation and error handling
 
 ---
 
-## Screenshot
+## Screenshots
 
 ### FastAPI Docs (Swagger)
 ![FastAPI Docs](screenshots/fastapi_docs.png)
@@ -53,7 +55,7 @@ This separation keeps API routing, database access, and replay logic organized a
 ### Python API Leaderboard Example
 ![Python Leaderboard Example](screenshots/python_leaderboard.png)
 
-### Node.js Companion API Example
+### Node.js Companion API Leaderboard Example
 ![Node API Sessions Example](screenshots/node_leaderboard.png)
 
 ## Running the Application
@@ -129,7 +131,7 @@ These routes are for local testing and debugging during development:
 
 ## Node.js Companion API
 
-This project also includes a small Express-based API located in the node-api/ folder.
+This project also includes a small Express-based API located in the `node-api/` folder.
 
 The Node service:
 
