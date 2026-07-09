@@ -8,6 +8,7 @@ Folders:
 - replay/: applies events to build a simple in-memory state
 """
 from fastapi import FastAPI, Query, HTTPException
+from fastapi.responses import RedirectResponse
 from typing import Optional
 from db import init_db
 from replay.engine import replay
@@ -21,6 +22,9 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="F1 Replay API")
 init_db()
 
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse(url="/docs")
 
 @app.get("/health")
 def health():
