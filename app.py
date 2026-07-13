@@ -7,10 +7,13 @@ Folders:
 - repo/: reads/writes SQLite
 - replay/: applies events to build a simple in-memory state
 """
+from pathlib import Path
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.responses import RedirectResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from typing import Optional
-from db import init_db
+from db import init_db, get_conn
 from replay.engine import replay
 from repo.events_repo import load_events, insert_events, delete_session
 from repo.drivers_repo import upsert_drivers, get_driver_map
@@ -22,8 +25,21 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="F1 Replay API")
 init_db()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+FRONTEND_DIR = Path(__file__).with_name("frontend")
+if FRONTEND_DIR.exists():
+    app.mount("/ui", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="ui")
+
 @app.get("/", include_in_schema=False)
 def root():
+    if FRONTEND_DIR.exists():
+        return RedirectResponse(url="/ui/")
     return RedirectResponse(url="/docs")
 
 @app.get("/health")
@@ -78,8 +94,6 @@ def state(
 
 @app.get("/sessions")
 def sessions():
-    from db import get_conn
-
     with get_conn() as conn:
         rows = conn.execute(
             """
@@ -139,7 +153,7 @@ def leaderboard(
             }
         )
 
-    # Sometimes race data does not include position, if only one driver is missing a position and no one is marked as P1, assume said driver is in first place.
+    # When race data does not include position, if only one driver is missing a position and no one is marked as P1 assume said driver is in first place.
     known_positions = {r["position"] for r in rows if r["position"] is not None}
     missing_rows = [r for r in rows if r["position"] is None]
 
@@ -191,14 +205,14 @@ def seed(session_id: str = Query("bahrain_demo")):
     return {"session_id": session_id, "inserted": inserted}
 
 
-@app.post("/ingest/openf1")
-def ingest_openf1(
-    session_id: str = Query(...),
-    openf1_session_key: int = Query(...),
-    limit_laps: int = Query(500),
-    limit_positions: int = Query(2000),
-    limit_pits: int = Query(2000),
+def _do_ingest_openf1(
+    session_id: str,
+    openf1_session_key: int,
+    limit_laps: int = 500,
+    limit_positions: int = 2000,
+    limit_pits: int = 2000,
 ):
+    """Shared by /ingest/openf1 and /load so the logic isn't duplicated."""
     logger.info(
         f"Ingest started | session={session_id} | openf1_session_key={openf1_session_key}"
     )
@@ -246,12 +260,19 @@ def ingest_openf1(
     }
 
 
-
-@app.post("/ingest/openf1/drivers")
-def ingest_openf1_drivers(
+@app.post("/ingest/openf1")
+def ingest_openf1(
     session_id: str = Query(...),
     openf1_session_key: int = Query(...),
+    limit_laps: int = Query(500),
+    limit_positions: int = Query(2000),
+    limit_pits: int = Query(2000),
 ):
+    return _do_ingest_openf1(session_id, openf1_session_key, limit_laps, limit_positions, limit_pits)
+
+
+def _do_ingest_openf1_drivers(session_id: str, openf1_session_key: int):
+    """Shared by /ingest/openf1/drivers and /load so the logic isn't duplicated."""
     from services.openf1 import fetch_drivers
 
     drivers = fetch_drivers(openf1_session_key)
@@ -267,4 +288,69 @@ def ingest_openf1_drivers(
         "session_id": session_id,
         "openf1_session_key": openf1_session_key,
         "upserted": upserted,
+    }
+
+
+@app.post("/ingest/openf1/drivers")
+def ingest_openf1_drivers(
+    session_id: str = Query(...),
+    openf1_session_key: int = Query(...),
+):
+    return _do_ingest_openf1_drivers(session_id, openf1_session_key)
+
+
+# Frontend for year -> Grand Prix -> session picker, no need for session key or swagger 
+
+
+@app.get("/openf1/meetings")
+def openf1_meetings(year: int = Query(...)):
+    """List Grand Prix weekends ('meetings') for a season, for the location picker."""
+    from services.openf1 import fetch_meetings
+
+    try:
+        meetings = fetch_meetings(year)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Failed to fetch meetings from OpenF1: {e}")
+
+    return {"year": year, "meetings": meetings}
+
+
+@app.get("/openf1/sessions")
+def openf1_sessions(meeting_key: int = Query(...)):
+    """List sessions for a Grand Prix weekend."""
+    from services.openf1 import fetch_sessions_for_meeting
+
+    try:
+        sess = fetch_sessions_for_meeting(meeting_key)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Failed to fetch sessions from OpenF1: {e}")
+
+    return {"meeting_key": meeting_key, "sessions": sess}
+
+
+@app.post("/load")
+def load_session(
+    session_id: str = Query(...),
+    openf1_session_key: int = Query(...),
+):
+    """One-click load for the frontend: reset, ingest events, and ingest drivers for a session."""
+    delete_session(session_id)
+
+    _do_ingest_openf1(session_id, openf1_session_key)
+
+    try:
+        _do_ingest_openf1_drivers(session_id, openf1_session_key)
+    except HTTPException:
+        logger.warning(f"No driver metadata available for session_key={openf1_session_key}")
+
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT MIN(time_sec) as min_t, MAX(time_sec) as max_t FROM events WHERE session_id = ?",
+            (session_id,),
+        ).fetchone()
+
+    return {
+        "session_id": session_id,
+        "openf1_session_key": openf1_session_key,
+        "time_range": [row["min_t"], row["max_t"]],
     }
