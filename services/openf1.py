@@ -39,15 +39,24 @@ def fetch_session_start(openf1_session_key: int) -> datetime:
         raise ValueError("Session not found or missing date_start")
     return _parse_iso(data[0]["date_start"])
 
+def _get_list(client: httpx.Client, url: str, params: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """GET a list endpoint from OpenF1.
+    Treat 404 as an empty list across the laps/position/pit endpoints.
+    OpenF1 sometimes returns 404 when there are no records.
+    """
+    r = client.get(url, params=params)
+    if r.status_code == 404:
+        return []
+    r.raise_for_status()
+    return r.json()
+
 def fetch_lap_events(openf1_session_key: int, session_start: datetime, limit: int = 500) -> List[Dict[str, Any]]:
     """Fetch laps from OpenF1 and return them as normalized event dicts.
     Fills in gaps when OpenF1 misses a lap record usually caused by a Safety Car restart.
     """
     url = "https://api.openf1.org/v1/laps"
     with httpx.Client(timeout=30.0) as client:
-        r = client.get(url, params={"session_key": openf1_session_key})
-        r.raise_for_status()
-        data = r.json()
+        data = _get_list(client, url, {"session_key": openf1_session_key})
 
     by_driver: Dict[str, List[Dict[str, Any]]] = {}
     for item in data[:limit]:
@@ -84,9 +93,7 @@ def fetch_position_events(openf1_session_key: int, session_start: datetime, limi
     """Fetch position updates from OpenF1 and return normalized events."""
     url = "https://api.openf1.org/v1/position"
     with httpx.Client(timeout=30.0) as client:
-        r = client.get(url, params={"session_key": openf1_session_key})
-        r.raise_for_status()
-        data = r.json()
+        data = _get_list(client, url, {"session_key": openf1_session_key})
 
     events: List[Dict[str, Any]] = []
     for item in data[:limit]:
@@ -105,9 +112,7 @@ def fetch_pit_events(openf1_session_key: int, session_start: datetime, limit: in
     """Fetch pit stops from OpenF1 and return normalized events."""
     url = "https://api.openf1.org/v1/pit"
     with httpx.Client(timeout=30.0) as client:
-        r = client.get(url, params={"session_key": openf1_session_key})
-        r.raise_for_status()
-        data = r.json()
+        data = _get_list(client, url, {"session_key": openf1_session_key})
 
     events: List[Dict[str, Any]] = []
     for item in data[:limit]:
