@@ -147,6 +147,7 @@ def leaderboard(
                 "driver": driver,
                 "code": meta.get("code"),
                 "name": meta.get("name"),
+                "team": meta.get("team"),
                 "position": info.get("position"),
                 "lap": info.get("lap"),
                 "pits": info.get("pits", 0),

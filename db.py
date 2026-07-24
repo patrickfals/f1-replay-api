@@ -40,6 +40,7 @@ def init_db() -> None:
                 driver TEXT NOT NULL,          -- driver number as string
                 code TEXT,
                 name TEXT,
+                team TEXT,
                 PRIMARY KEY (session_id, driver)
             )
             """
@@ -47,4 +48,9 @@ def init_db() -> None:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_drivers_session ON drivers(session_id)"
         )
+
+        # Migrate DBs created before the "team" column existed.
+        existing_columns = {row["name"] for row in conn.execute("PRAGMA table_info(drivers)")}
+        if "team" not in existing_columns:
+            conn.execute("ALTER TABLE drivers ADD COLUMN team TEXT")
 

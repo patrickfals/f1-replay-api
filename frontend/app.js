@@ -187,6 +187,7 @@ async function renderLeaderboard() {
         <td class="pos">${row.position ?? "—"}</td>
         <td>${row.code ?? "—"}</td>
         <td>${row.name ?? row.driver}</td>
+        <td>${row.team ?? "—"}</td>
         <td>${row.lap ?? 0}</td>
         <td>${row.pits ?? 0}</td>
       `;
