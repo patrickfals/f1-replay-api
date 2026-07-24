@@ -42,7 +42,7 @@ This separation keeps API routing, database access, and replay logic organized a
 - Store lap, position, and pit events in SQLite
 - Rebuild race state at any timestamp
 - Generate a dynamic leaderboard for a given timestamp
-- Ingest driver metadata for names/codes
+- Ingest driver metadata for names/codes/teams
 - Safely handle missing position updates
 - Basic validation and error handling
 - Web frontend for picking a session by year / Grand Prix / session type, with a scrubbable leaderboard
@@ -130,7 +130,7 @@ These routes are the main project workflow (ingestion + replay/query):
 - `GET /openf1/sessions` - List sessions (practice/qualifying/race/etc) for a Grand Prix weekend (`?meeting_key=...`)
 - `POST /load` - One-click reset + ingest events + ingest drivers for a session; used by the frontend's "Load Session" button
 - `POST /ingest/openf1` - Ingest race events from the OpenF1 API
-- `POST /ingest/openf1/drivers` - Ingest driver metadata (names/codes) from OpenF1
+- `POST /ingest/openf1/drivers` - Ingest driver metadata (names/codes/teams) from OpenF1
 - `GET /state` - Rebuild race state at a given timestamp
 - `GET /leaderboard` - Return leaderboard data at a given timestamp
 
