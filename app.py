@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from typing import Optional
 from db import init_db, get_conn
-from replay.engine import replay
+from replay.engine import replay, starting_positions
 from repo.events_repo import load_events, insert_events, delete_session
 from repo.drivers_repo import upsert_drivers, get_driver_map
 import logging
@@ -138,6 +138,7 @@ def leaderboard(
 
     s = replay(evts, time_sec)
     driver_map = get_driver_map(session_id)
+    starts = starting_positions(evts)
 
     rows = []
     for driver, info in s.items():
@@ -149,6 +150,7 @@ def leaderboard(
                 "name": meta.get("name"),
                 "team": meta.get("team"),
                 "position": info.get("position"),
+                "start_position": starts.get(driver),
                 "lap": info.get("lap"),
                 "pits": info.get("pits", 0),
             }
@@ -164,6 +166,13 @@ def leaderboard(
             if r["driver"] == missing_driver:
                 r["position"] = 1
                 break
+
+    # Places gained (+) or lost (-) versus the starting grid slot.
+    for r in rows:
+        if r["position"] is not None and r["start_position"] is not None:
+            r["delta"] = r["start_position"] - r["position"]
+        else:
+            r["delta"] = None
 
     rows.sort(
         key=lambda r: (
@@ -209,9 +218,9 @@ def seed(session_id: str = Query("bahrain_demo")):
 def _do_ingest_openf1(
     session_id: str,
     openf1_session_key: int,
-    limit_laps: int = 500,
-    limit_positions: int = 2000,
-    limit_pits: int = 2000,
+    limit_laps: int = 5000,
+    limit_positions: int = 5000,
+    limit_pits: int = 5000,
 ):
     """Shared by /ingest/openf1 and /load so the logic isn't duplicated."""
     logger.info(
@@ -265,9 +274,9 @@ def _do_ingest_openf1(
 def ingest_openf1(
     session_id: str = Query(...),
     openf1_session_key: int = Query(...),
-    limit_laps: int = Query(500),
-    limit_positions: int = Query(2000),
-    limit_pits: int = Query(2000),
+    limit_laps: int = Query(5000),
+    limit_positions: int = Query(5000),
+    limit_pits: int = Query(5000),
 ):
     return _do_ingest_openf1(session_id, openf1_session_key, limit_laps, limit_positions, limit_pits)
 
@@ -350,8 +359,23 @@ def load_session(
             (session_id,),
         ).fetchone()
 
+        # Sessions open well before the green flag (grid formation, installation laps).
+        # Start playback at the first lap-1 event instead of session-open so nothing
+        # sits static through the pre-race procedure.
+        green_flag = conn.execute(
+            """
+            SELECT MIN(time_sec) as t FROM events
+            WHERE session_id = ? AND type = 'LAP' AND json_extract(payload, '$.lap') = 1
+            """,
+            (session_id,),
+        ).fetchone()
+
+    min_t = row["min_t"]
+    if green_flag["t"] is not None:
+        min_t = green_flag["t"]
+
     return {
         "session_id": session_id,
         "openf1_session_key": openf1_session_key,
-        "time_range": [row["min_t"], row["max_t"]],
+        "time_range": [min_t, row["max_t"]],
     }

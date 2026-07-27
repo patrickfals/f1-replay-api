@@ -47,3 +47,23 @@ def replay(events: List[Dict[str, Any]], target_time_sec: float) -> Dict[str, Di
         apply_event(state, e)
 
     return state
+
+
+def starting_positions(events: List[Dict[str, Any]]) -> Dict[str, int]:
+    """Return each driver's earliest known POSITION value.
+
+    For a race this is effectively the starting grid: OpenF1 reports each
+    driver's position from the grid formation onward, so the first POSITION
+    event on the timeline is their starting slot. Used to compute places
+    gained/lost as the replay progresses.
+    """
+    earliest: Dict[str, Dict[str, Any]] = {}
+
+    for e in events:
+        if e["type"] != "POSITION" or e.get("position") is None:
+            continue
+        driver = e["driver"]
+        if driver not in earliest or e["time_sec"] < earliest[driver]["time_sec"]:
+            earliest[driver] = e
+
+    return {driver: e["position"] for driver, e in earliest.items()}

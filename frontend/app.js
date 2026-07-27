@@ -11,8 +11,10 @@ const speedSelect = document.getElementById("speed");
 const timeLabel = document.getElementById("timeLabel");
 const scrubber = document.getElementById("scrubber");
 const leaderboardBody = document.getElementById("leaderboardBody");
+const leaderboardTable = document.getElementById("leaderboardTable");
 
 let currentSessionId = null;
+let currentSessionType = null;
 let minTime = 0;
 let maxTime = 0;
 let simTime = 0;
@@ -122,6 +124,7 @@ async function loadSessions() {
       const opt = document.createElement("option");
       opt.value = s.session_key;
       opt.textContent = s.session_name;
+      opt.dataset.sessionType = s.session_type;
       sessionSelect.appendChild(opt);
     }
     sessionSelect.disabled = false;
@@ -151,6 +154,8 @@ async function loadSession() {
     );
 
     currentSessionId = data.session_id;
+    currentSessionType = sessionOpt.dataset.sessionType;
+    leaderboardTable.classList.toggle("is-race", currentSessionType === "Race");
     // The backend only accepts time_sec >= 0; clamp away any pre-start (formation lap) events.
     minTime = Math.max(0, data.time_range[0] ?? 0);
     maxTime = Math.max(minTime, data.time_range[1] ?? 0);
@@ -182,9 +187,11 @@ async function renderLeaderboard() {
     );
     leaderboardBody.innerHTML = "";
     for (const row of data.leaderboard) {
+      const delta = formatDelta(row.delta);
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td class="pos">${row.position ?? "—"}</td>
+        <td class="delta-col ${delta.cls}">${delta.text}</td>
         <td>${row.code ?? "—"}</td>
         <td>${row.name ?? row.driver}</td>
         <td>${row.team ?? "—"}</td>
@@ -196,6 +203,14 @@ async function renderLeaderboard() {
   } catch (err) {
     setStatus(`Failed to fetch leaderboard: ${err.message}`, true);
   }
+}
+
+function formatDelta(delta) {
+  if (delta === null || delta === undefined) return { text: "—", cls: "" };
+  if (delta === 0) return { text: "+0", cls: "delta-even" };
+  return delta > 0
+    ? { text: `+${delta}`, cls: "delta-up" }
+    : { text: `${delta}`, cls: "delta-down" };
 }
 
 function stopPlayback() {

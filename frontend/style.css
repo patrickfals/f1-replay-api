@@ -173,3 +173,25 @@ button:disabled {
 .leaderboard tr:hover td {
   background: #1b2030;
 }
+
+.leaderboard .delta-col {
+  display: none;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.leaderboard.is-race .delta-col {
+  display: table-cell;
+}
+
+.delta-up {
+  color: #2ecc71;
+}
+
+.delta-down {
+  color: #ff5a5a;
+}
+
+.delta-even {
+  color: var(--muted);
+}

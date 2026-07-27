@@ -1,6 +1,6 @@
 # F1 Replay API
 
-**Live demo:** [f1-replay-patrickfals.onrender.com](https://f1-replay-patrickfals.onrender.com/) (free-tier hosting — the first load can take 30-50s to wake up if it's been idle)
+**Live demo:** [f1-replay-patrickfals.onrender.com](https://f1-replay-patrickfals.onrender.com/) (the first load can take 30-50s to wake up if it's been idle)
 
 Backend project that ingests real Formula 1 race data from the OpenF1 API and reconstructs race state at a specific point in time. Including a web frontend for picking a session and replaying it to make it more user friendly, no manual API calls or Swagger required.
 
@@ -45,6 +45,7 @@ This separation keeps API routing, database access, and replay logic organized a
 - Rebuild race state at any timestamp
 - Generate a dynamic leaderboard for a given timestamp
 - Ingest driver metadata for names/codes/teams
+- Show places gained/lost (+/-) versus the starting grid during a race
 - Safely handle missing position updates
 - Basic validation and error handling
 - Web frontend for picking a session by year / Grand Prix / session type, with a scrubbable leaderboard
