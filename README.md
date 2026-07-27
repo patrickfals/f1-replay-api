@@ -1,5 +1,7 @@
 # F1 Replay API
 
+**Live demo:** [f1-replay-patrickfals.onrender.com](https://f1-replay-patrickfals.onrender.com/) (free-tier hosting — the first load can take 30-50s to wake up if it's been idle)
+
 Backend project that ingests real Formula 1 race data from the OpenF1 API and reconstructs race state at a specific point in time. Including a web frontend for picking a session and replaying it to make it more user friendly, no manual API calls or Swagger required.
 
 This project focuses on backend engineering concepts such as external API ingestion, event-based data storage, SQL-backed querying, and reconstructing state from historical events.
