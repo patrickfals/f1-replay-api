@@ -251,7 +251,10 @@ def _do_ingest_openf1(
         )
         raise HTTPException(
             status_code=400,
-            detail="No events were ingested. Check session_key.",
+            detail=(
+                "No events were ingested. Check session_key, or this session may have "
+                "no data because the event was cancelled or didn't go ahead (e.g. weather)."
+            ),
         )
 
     logger.info(

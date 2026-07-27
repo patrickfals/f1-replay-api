@@ -143,6 +143,7 @@ def fetch_meetings(year: int) -> List[Dict[str, Any]]:
             "country_name": m.get("country_name"),
             "date_start": m.get("date_start"),
             "year": m.get("year"),
+            "is_cancelled": m.get("is_cancelled", False),
         }
         for m in data
     ]
@@ -164,6 +165,7 @@ def fetch_sessions_for_meeting(meeting_key: int) -> List[Dict[str, Any]]:
             "session_type": s.get("session_type"),
             "date_start": s.get("date_start"),
             "date_end": s.get("date_end"),
+            "is_cancelled": s.get("is_cancelled", False),
         }
         for s in data
     ]

@@ -95,7 +95,7 @@ async function loadMeetings() {
     for (const m of data.meetings) {
       const opt = document.createElement("option");
       opt.value = m.meeting_key;
-      opt.textContent = m.meeting_name;
+      opt.textContent = m.is_cancelled ? `${m.meeting_name} (Cancelled)` : m.meeting_name;
       opt.dataset.location = m.location;
       meetingSelect.appendChild(opt);
     }
@@ -123,7 +123,8 @@ async function loadSessions() {
     for (const s of data.sessions) {
       const opt = document.createElement("option");
       opt.value = s.session_key;
-      opt.textContent = s.session_name;
+      opt.textContent = s.is_cancelled ? `${s.session_name} (Cancelled)` : s.session_name;
+      opt.dataset.sessionName = s.session_name;
       opt.dataset.sessionType = s.session_type;
       sessionSelect.appendChild(opt);
     }
@@ -144,7 +145,7 @@ async function loadSession() {
   loadBtn.disabled = true;
   setStatus("Loading session data from OpenF1… this can take a few seconds.");
 
-  const sessionId = slugify(meetingOpt.dataset.location, year, sessionOpt.textContent);
+  const sessionId = slugify(meetingOpt.dataset.location, year, sessionOpt.dataset.sessionName);
   const openf1SessionKey = sessionOpt.value;
 
   try {
