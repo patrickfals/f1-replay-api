@@ -8,6 +8,7 @@ Folders:
 - replay/: applies events to build a simple in-memory state
 """
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -123,6 +124,7 @@ def sessions():
 def leaderboard(
     session_id: str = Query("bahrain_demo"),
     time_sec: float = Query(...),
+    session_type: Optional[str] = Query(None),
     debug: bool = Query(False),
 ):
     if time_sec < 0:
@@ -140,6 +142,10 @@ def leaderboard(
     driver_map = get_driver_map(session_id)
     starts = starting_positions(evts)
 
+    # OpenF1 has no live position/gap feed for Practice or Qualifying (only Race),
+    # so those session types are classified by fastest lap instead, below.
+    is_race = session_type in (None, "Race")
+
     rows = []
     for driver, info in s.items():
         meta = driver_map.get(driver, {})
@@ -153,19 +159,33 @@ def leaderboard(
                 "start_position": starts.get(driver),
                 "lap": info.get("lap"),
                 "pits": info.get("pits", 0),
+                "gap_to_leader": info.get("gap_to_leader"),
+                "best_lap": info.get("best_lap"),
             }
         )
 
-    # When race data does not include position, if only one driver is missing a position and no one is marked as P1 assume said driver is in first place.
-    known_positions = {r["position"] for r in rows if r["position"] is not None}
-    missing_rows = [r for r in rows if r["position"] is None]
+    if is_race:
+        # When race data does not include position, if only one driver is missing a position and no one is marked as P1 assume said driver is in first place.
+        known_positions = {r["position"] for r in rows if r["position"] is not None}
+        missing_rows = [r for r in rows if r["position"] is None]
 
-    if len(missing_rows) == 1 and 1 not in known_positions:
-        missing_driver = missing_rows[0]["driver"]
+        if len(missing_rows) == 1 and 1 not in known_positions:
+            missing_driver = missing_rows[0]["driver"]
+            for r in rows:
+                if r["driver"] == missing_driver:
+                    r["position"] = 1
+                    break
+    else:
+        # Classify by best lap time so far; drivers without a timed lap yet are unranked.
+        timed = sorted((r for r in rows if r["best_lap"] is not None), key=lambda r: r["best_lap"])
+        fastest = timed[0]["best_lap"] if timed else None
         for r in rows:
-            if r["driver"] == missing_driver:
-                r["position"] = 1
-                break
+            if r["best_lap"] is None:
+                r["position"] = None
+                r["gap_to_leader"] = None
+        for idx, r in enumerate(timed, start=1):
+            r["position"] = idx
+            r["gap_to_leader"] = r["best_lap"] - fastest
 
     # Places gained (+) or lost (-) versus the starting grid slot.
     for r in rows:
@@ -188,6 +208,8 @@ def leaderboard(
     }
 
     if debug:
+        known_positions = {r["position"] for r in rows if r["position"] is not None}
+        missing_rows = [r for r in rows if r["position"] is None]
         known_sorted = sorted([p for p in known_positions if p is not None])
         response["debug"] = {
             "known_positions_count": len(known_sorted),
@@ -232,18 +254,30 @@ def _do_ingest_openf1(
         fetch_lap_events,
         fetch_position_events,
         fetch_pit_events,
+        fetch_gap_events,
     )
 
     session_start = fetch_session_start(openf1_session_key)
 
-    lap_events = fetch_lap_events(openf1_session_key, session_start, limit=limit_laps)
-    pos_events = fetch_position_events(openf1_session_key, session_start, limit=limit_positions)
-    pit_events = fetch_pit_events(openf1_session_key, session_start, limit=limit_pits)
+    # These four calls are independent OpenF1 requests; OpenF1's per-endpoint
+    # latency (not our own processing) dominates ingest time, so run them
+    # concurrently instead of stacking up their wait times sequentially.
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        lap_future = executor.submit(fetch_lap_events, openf1_session_key, session_start, limit_laps)
+        pos_future = executor.submit(fetch_position_events, openf1_session_key, session_start, limit_positions)
+        pit_future = executor.submit(fetch_pit_events, openf1_session_key, session_start, limit_pits)
+        gap_future = executor.submit(fetch_gap_events, openf1_session_key, session_start)
+
+        lap_events = lap_future.result()
+        pos_events = pos_future.result()
+        pit_events = pit_future.result()
+        gap_events = gap_future.result()
 
     inserted = 0
     inserted += insert_events(session_id, lap_events)
     inserted += insert_events(session_id, pos_events)
     inserted += insert_events(session_id, pit_events)
+    inserted += insert_events(session_id, gap_events)
 
     if inserted == 0:
         logger.error(
@@ -269,6 +303,7 @@ def _do_ingest_openf1(
             "laps": len(lap_events),
             "positions": len(pos_events),
             "pits": len(pit_events),
+            "gaps": len(gap_events),
         },
     }
 

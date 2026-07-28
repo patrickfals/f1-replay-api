@@ -184,6 +184,11 @@ button:disabled {
   display: table-cell;
 }
 
+.leaderboard .gap-col {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
 .delta-up {
   color: #2ecc71;
 }

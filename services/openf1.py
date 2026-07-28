@@ -8,6 +8,7 @@ Notes:
   (time_sec) so everything runs on a single timeline.
 """
 import requests
+import time
 from datetime import datetime, timezone
 from typing import Dict, Any, List
 import httpx
@@ -43,12 +44,18 @@ def _get_list(client: httpx.Client, url: str, params: Dict[str, Any]) -> List[Di
     """GET a list endpoint from OpenF1.
     Treat 404 as an empty list across the laps/position/pit endpoints.
     OpenF1 sometimes returns 404 when there are no records.
+    Retries a couple of times on 429 (rate limited), since fetching several
+    endpoints concurrently can occasionally trip OpenF1's rate limiter.
     """
-    r = client.get(url, params=params)
-    if r.status_code == 404:
-        return []
-    r.raise_for_status()
-    return r.json()
+    for attempt in range(3):
+        r = client.get(url, params=params)
+        if r.status_code == 404:
+            return []
+        if r.status_code == 429 and attempt < 2:
+            time.sleep(1.5 * (attempt + 1))
+            continue
+        r.raise_for_status()
+        return r.json()
 
 def fetch_lap_events(openf1_session_key: int, session_start: datetime, limit: int = 500) -> List[Dict[str, Any]]:
     """Fetch laps from OpenF1 and return them as normalized event dicts.
@@ -67,6 +74,7 @@ def fetch_lap_events(openf1_session_key: int, session_start: datetime, limit: in
         by_driver.setdefault(driver, []).append({
             "time_sec": _secs_since(session_start, t),
             "lap": item["lap_number"],
+            "lap_time": item.get("lap_duration"),
         })
 
     events: List[Dict[str, Any]] = []
@@ -76,15 +84,22 @@ def fetch_lap_events(openf1_session_key: int, session_start: datetime, limit: in
         for cur in laps:
             if prev is not None and cur["lap"] - prev["lap"] > 1:
                 gap = cur["lap"] - prev["lap"]
-                duration = cur["time_sec"] - prev["time_sec"]
+                span = cur["time_sec"] - prev["time_sec"]
                 for i in range(1, gap):
                     events.append({
                         "type": "LAP",
                         "driver": driver,
-                        "time_sec": prev["time_sec"] + duration * i / gap,
+                        "time_sec": prev["time_sec"] + span * i / gap,
                         "lap": prev["lap"] + i,
+                        "lap_time": None,
                     })
-            events.append({"type": "LAP", "driver": driver, "time_sec": cur["time_sec"], "lap": cur["lap"]})
+            events.append({
+                "type": "LAP",
+                "driver": driver,
+                "time_sec": cur["time_sec"],
+                "lap": cur["lap"],
+                "lap_time": cur["lap_time"],
+            })
             prev = cur
 
     return events
@@ -105,6 +120,30 @@ def fetch_position_events(openf1_session_key: int, session_start: datetime, limi
             "driver": str(item["driver_number"]),
             "time_sec": _secs_since(session_start, t),
             "position": item.get("position"),
+        })
+    return events
+
+def fetch_gap_events(openf1_session_key: int, session_start: datetime) -> List[Dict[str, Any]]:
+    """Fetch gap-to-leader data from OpenF1 and return events.
+
+    gap_to_leader either in seconds or a lap-count like
+    "+1 LAP" for lapped cars
+    """
+    url = "https://api.openf1.org/v1/intervals"
+    with httpx.Client(timeout=30.0) as client:
+        data = _get_list(client, url, {"session_key": openf1_session_key})
+
+    events: List[Dict[str, Any]] = []
+    for item in data:
+        gap = item.get("gap_to_leader")
+        if not item.get("date") or item.get("driver_number") is None or gap is None:
+            continue
+        t = _parse_iso(item["date"])
+        events.append({
+            "type": "GAP",
+            "driver": str(item["driver_number"]),
+            "time_sec": _secs_since(session_start, t),
+            "gap": gap,
         })
     return events
 

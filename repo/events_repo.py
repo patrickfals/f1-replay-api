@@ -9,17 +9,22 @@ from db import get_conn
 
 def insert_events(session_id: str, events: List[Dict[str, Any]]) -> int:
     """Insert a batch of events for a session. Returns how many rows were inserted."""
-    inserted = 0
+    if not events:
+        return 0
+
+    # Store the full event as JSON to keep DB schema simple.
+    rows = [
+        (session_id, e["time_sec"], e["driver"], e["type"], json.dumps(e))
+        for e in events
+    ]
+
     with get_conn() as conn:
-        for e in events:
-            # Store the full event as JSON to keep DB schema simple.
-            conn.execute(
-                "INSERT INTO events (session_id, time_sec, driver, type, payload) VALUES (?, ?, ?, ?, ?)",
-                (session_id, e["time_sec"], e["driver"], e["type"], json.dumps(e)),
-            )
-            inserted += 1
+        conn.executemany(
+            "INSERT INTO events (session_id, time_sec, driver, type, payload) VALUES (?, ?, ?, ?, ?)",
+            rows,
+        )
         conn.commit()
-    return inserted
+    return len(rows)
 
 def delete_session(session_id: str) -> None:
     """Delete all events for a given session_id (used by /reset)."""

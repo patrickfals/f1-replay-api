@@ -184,15 +184,20 @@ async function renderLeaderboard() {
 
   try {
     const data = await fetchJSON(
-      `/leaderboard?session_id=${encodeURIComponent(currentSessionId)}&time_sec=${simTime}`
+      `/leaderboard?session_id=${encodeURIComponent(currentSessionId)}&time_sec=${simTime}&session_type=${encodeURIComponent(currentSessionType || "")}`
     );
     leaderboardBody.innerHTML = "";
     for (const row of data.leaderboard) {
       const delta = formatDelta(row.delta);
+      const gapText =
+        row.position === 1 && currentSessionType !== "Race"
+          ? formatLapTime(row.best_lap)
+          : formatGap(row.gap_to_leader, row.position);
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td class="pos">${row.position ?? "—"}</td>
         <td class="delta-col ${delta.cls}">${delta.text}</td>
+        <td class="gap-col">${gapText}</td>
         <td>${row.code ?? "—"}</td>
         <td>${row.name ?? row.driver}</td>
         <td>${row.team ?? "—"}</td>
@@ -212,6 +217,20 @@ function formatDelta(delta) {
   return delta > 0
     ? { text: `+${delta}`, cls: "delta-up" }
     : { text: `${delta}`, cls: "delta-down" };
+}
+
+function formatGap(gap, position) {
+  if (position === 1) return "Leader";
+  if (typeof gap === "number") return `+${gap.toFixed(3)}s`;
+  if (typeof gap === "string") return gap;
+  return "—";
+}
+
+function formatLapTime(seconds) {
+  if (typeof seconds !== "number") return "—";
+  const m = Math.floor(seconds / 60);
+  const s = seconds - m * 60;
+  return `${m}:${s.toFixed(3).padStart(6, "0")}`;
 }
 
 function stopPlayback() {

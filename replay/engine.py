@@ -15,15 +15,23 @@ def apply_event(state: Dict[str, Dict[str, Any]], event: Dict[str, Any]) -> None
 
     # Create a default state.
     if driver not in state:
-        state[driver] = {"lap": 0, "position": None, "pits": 0}
+        state[driver] = {"lap": 0, "position": None, "pits": 0, "gap_to_leader": None, "best_lap": None}
 
     event_type = event["type"]
 
     if event_type == "LAP":
         state[driver]["lap"] = int(event["lap"])
+        lap_time = event.get("lap_time")
+        if lap_time is not None:
+            best = state[driver]["best_lap"]
+            if best is None or lap_time < best:
+                state[driver]["best_lap"] = lap_time
 
     elif event_type == "POSITION":
         state[driver]["position"] = event["position"]
+
+    elif event_type == "GAP":
+        state[driver]["gap_to_leader"] = event["gap"]
 
     elif event_type == "PIT":
         # Some pit events include a running pit_count.
