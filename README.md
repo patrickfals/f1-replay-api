@@ -17,6 +17,7 @@ Instead of storing the full race state directly, this system stores individual r
 - LAP
 - POSITION
 - PIT
+- GAP
 
 When a client requests a specific timestamp, the application rebuilds the race state using all events up to that time.
 
@@ -40,12 +41,14 @@ This separation keeps API routing, database access, and replay logic organized a
 
 ## Features
 
-- Ingest real race data from OpenF1
-- Store lap, position, and pit events in SQLite
+- Ingest real race data from OpenF1, fetching laps/positions/pits/gaps concurrently to keep load times down
+- Store lap, position, pit, and gap events in SQLite
 - Rebuild race state at any timestamp
 - Generate a dynamic leaderboard for a given timestamp
 - Ingest driver metadata for names/codes/teams
 - Show places gained/lost (+/-) versus the starting grid during a race
+- Show gap-to-leader: live intervals during a Race, or each driver's fastest lap during Practice/Qualifying (OpenF1 has no live gap feed for those session types)
+- Flag cancelled Grand Prix weekends/sessions in the picker
 - Safely handle missing position updates
 - Basic validation and error handling
 - Web frontend for picking a session by year / Grand Prix / session type, with a scrubbable leaderboard
@@ -57,15 +60,18 @@ This separation keeps API routing, database access, and replay logic organized a
 A browser UI is included so sessions can be picked without knowing an OpenF1 `session_key` in advance.
 
 1. Open the app in a browser, the root URL redirects straight to the picker.
-2. Pick a **year**, a **Grand Prix**, and a **session** (Practice 1/2/3, Qualifying, Race, etc.), all populated live from OpenF1.
+2. Pick a **year**, a **Grand Prix**, and a **session** (Practice 1/2/3, Qualifying, Race, etc.), all populated live from OpenF1. Cancelled weekends/sessions are labeled as such.
 3. Click **Load Session** this resets, ingests events, and ingests driver metadata for that session in one step.
-4. Scrub through the session with the time slider, or click **Play** to watch the leaderboard update automatically.
+4. Scrub through the session with the time slider, or click **Play** to watch the leaderboard update automatically. During a Race, Pos/Gap reflect live running order; during Practice/Qualifying they're classified by each driver's fastest lap instead, since OpenF1 doesn't provide a live feed for those sessions.
 
 The frontend lives in `frontend/` (plain HTML/CSS/JS, no build step) and is served by FastAPI itself at `/ui`.
 
 ---
 
 ## Screenshots
+
+### Web Frontend Leaderboard
+![Frontend Leaderboard](screenshots/frontend_leaderboard.png)
 
 ### FastAPI Docs (Swagger)
 ![FastAPI Docs](screenshots/fastapi_docs.png)
