@@ -2,11 +2,9 @@
 
 **Live demo:** [f1-replay-patrickfals.onrender.com](https://f1-replay-patrickfals.onrender.com/) (the first load can take 30-50s to wake up if it's been idle)
 
-Backend project that ingests real Formula 1 race data from the OpenF1 API and reconstructs race state at a specific point in time. Including a web frontend for picking a session and replaying it to make it more user friendly, no manual API calls or Swagger required.
+Backend project that ingests real Formula 1 race data from the OpenF1 API and reconstructs race state at a specific point in time. A web frontend is included for picking a session and replaying it without hand-crafting API calls — raw endpoints and Swagger docs are also available below for anyone who'd rather drive it directly.
 
 This project focuses on backend engineering concepts such as external API ingestion, event-based data storage, SQL-backed querying, and reconstructing state from historical events.
-
-The project was developed incrementally using Git for version control and GitHub Actions for continuous integration.
 
 ---
 
@@ -209,7 +207,7 @@ This repository includes a GitHub Actions workflow that runs on push and pull re
 - Separating logic into clear modules
 - Handling incomplete data safely
 - Working with both Python and Node.js in backend development
-- Building a small vanilla JS frontend to drive the API without Swagger
+- Building a small vanilla JS frontend as a friendlier alternative to driving the API through Swagger
 
 ---
 
