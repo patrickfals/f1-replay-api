@@ -194,9 +194,23 @@ Then open:
 
 This repository includes a GitHub Actions workflow that runs on push and pull requests:
 
-- Install Node dependencies
-- Run basic validation checks
-- Verify the Python application imports correctly
+- Install Node dependencies and run lint checks for the companion API
+- Install Python dependencies and verify the application imports correctly
+- Run the pytest suite
+
+---
+
+## Testing
+
+Run the test suite with:
+
+    pip install -r requirements-dev.txt
+    pytest
+
+Coverage includes:
+
+- **Replay engine** (`tests/test_replay_engine.py`) — unit tests for event application, lap/best-lap tracking, out-of-order event handling, and starting-grid derivation.
+- **API layer** (`tests/test_api.py`) — endpoint tests via FastAPI's `TestClient` for seeding, state/leaderboard reconstruction, session reset, and error responses (404 for unknown sessions, 400 for invalid input). Each test runs against a dedicated, auto-cleaned session so it never touches real ingested data.
 
 ---
 
@@ -208,12 +222,12 @@ This repository includes a GitHub Actions workflow that runs on push and pull re
 - Handling incomplete data safely
 - Working with both Python and Node.js in backend development
 - Building a small vanilla JS frontend as a friendlier alternative to driving the API through Swagger
+- Writing unit and API tests with pytest and FastAPI's TestClient, and running them automatically in CI on every push and pull request
 
 ---
 
 ## Future Improvements
 
-- Add automated tests
 - Add Docker support
 - Deploy to AWS
 - Expand CI into a full deployment workflow

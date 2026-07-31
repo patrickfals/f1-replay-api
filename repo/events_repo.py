@@ -12,7 +12,7 @@ def insert_events(session_id: str, events: List[Dict[str, Any]]) -> int:
     if not events:
         return 0
 
-    # Store the full event as JSON to keep DB schema simple.
+    # Store the full event as JSON 
     rows = [
         (session_id, e["time_sec"], e["driver"], e["type"], json.dumps(e))
         for e in events

@@ -143,7 +143,7 @@ def leaderboard(
     starts = starting_positions(evts)
 
     # OpenF1 has no live position/gap feed for Practice or Qualifying (only Race),
-    # so those session types are classified by fastest lap instead, below.
+    # These sessions are classified by fastest lap instead, below.
     is_race = session_type in (None, "Race")
 
     rows = []
@@ -259,9 +259,10 @@ def _do_ingest_openf1(
 
     session_start = fetch_session_start(openf1_session_key)
 
-    # These four calls are independent OpenF1 requests; OpenF1's per-endpoint
-    # latency (not our own processing) dominates ingest time, so run them
-    # concurrently instead of stacking up their wait times sequentially.
+    # These calls each hit a different OpenF1 endpoint and don't depend on
+    # each other, they run at the same time instead of one after another.
+    # Most of the wait is OpenF1 responding, done in parallel redcues wait.
+    
     with ThreadPoolExecutor(max_workers=4) as executor:
         lap_future = executor.submit(fetch_lap_events, openf1_session_key, session_start, limit_laps)
         pos_future = executor.submit(fetch_position_events, openf1_session_key, session_start, limit_positions)
