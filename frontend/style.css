@@ -147,6 +147,10 @@ button:disabled {
   accent-color: var(--accent);
 }
 
+.table-scroll {
+  overflow-x: auto;
+}
+
 .leaderboard {
   width: 100%;
   border-collapse: collapse;
@@ -199,4 +203,10 @@ button:disabled {
 
 .delta-even {
   color: var(--muted);
+}
+
+@media (max-width: 640px) {
+  .picker {
+    grid-template-columns: 1fr;
+  }
 }
