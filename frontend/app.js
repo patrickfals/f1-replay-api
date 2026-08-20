@@ -69,6 +69,10 @@ function initYears() {
   }
 }
 
+function isUpcoming(dateStart) {
+  return Boolean(dateStart) && new Date(dateStart) > new Date();
+}
+
 function resetSelect(select, placeholder) {
   select.innerHTML = "";
   const opt = document.createElement("option");
@@ -93,10 +97,17 @@ async function loadMeetings() {
       return;
     }
     for (const m of data.meetings) {
+      const upcoming = isUpcoming(m.date_start);
+
+      let label = m.meeting_name;
+      if (m.is_cancelled) label += " (Cancelled)";
+      if (upcoming) label += " (Upcoming)";
+
       const opt = document.createElement("option");
       opt.value = m.meeting_key;
-      opt.textContent = m.is_cancelled ? `${m.meeting_name} (Cancelled)` : m.meeting_name;
+      opt.textContent = label;
       opt.dataset.location = m.location;
+      opt.disabled = upcoming;
       meetingSelect.appendChild(opt);
     }
     meetingSelect.disabled = false;
