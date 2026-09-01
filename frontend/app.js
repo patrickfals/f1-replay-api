@@ -21,6 +21,11 @@ let simTime = 0;
 let playing = false;
 let tickHandle = null;
 let scrubDebounce = null;
+// Ticket number for leaderboard requests, so a late, older reply can't overwrite a newer one.
+let latestRequestId = 0;
+
+// True while a leaderboard request is waiting on the server.
+let isFetchingLeaderboard = false;
 
 function setStatus(msg, isError = false) {
   statusEl.textContent = msg || "";
@@ -193,10 +198,21 @@ async function renderLeaderboard() {
   timeLabel.textContent = formatTime(simTime);
   scrubber.value = simTime;
 
+  // This call's ticket number (see the explanation above latestRequestId).
+  latestRequestId += 1;
+  const thisRequestId = latestRequestId;
+  const isStale = () => thisRequestId !== latestRequestId;
+  const requestedTime = simTime;
+
+  isFetchingLeaderboard = true;
   try {
     const data = await fetchJSON(
-      `/leaderboard?session_id=${encodeURIComponent(currentSessionId)}&time_sec=${simTime}&session_type=${encodeURIComponent(currentSessionType || "")}`
+      `/leaderboard?session_id=${encodeURIComponent(currentSessionId)}&time_sec=${requestedTime}&session_type=${encodeURIComponent(currentSessionType || "")}`
     );
+
+    // Our response arrived late — a newer request already replaced us. Stop.
+    if (isStale()) return;
+
     leaderboardBody.innerHTML = "";
     for (const row of data.leaderboard) {
       const delta = formatDelta(row.delta);
@@ -218,7 +234,10 @@ async function renderLeaderboard() {
       leaderboardBody.appendChild(tr);
     }
   } catch (err) {
+    if (isStale()) return;
     setStatus(`Failed to fetch leaderboard: ${err.message}`, true);
+  } finally {
+    if (!isStale()) isFetchingLeaderboard = false;
   }
 }
 
@@ -257,6 +276,8 @@ function startPlayback() {
   playing = true;
   playBtn.textContent = "⏸ Pause";
   tickHandle = setInterval(async () => {
+    // Skip this tick if the previous request hasn't come back yet.
+    if (isFetchingLeaderboard) return;
     const speed = Number(speedSelect.value);
     simTime += speed * 0.5;
     if (simTime >= maxTime) {
