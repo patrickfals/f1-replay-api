@@ -21,7 +21,8 @@ let simTime = 0;
 let playing = false;
 let tickHandle = null;
 let scrubDebounce = null;
-// Ticket number for leaderboard requests, so a late, older reply can't overwrite a newer one.
+// Goes up by 1 for every leaderboard request. Lets a request check whether a
+// newer one has started since, so an old, late reply can't overwrite newer data.
 let latestRequestId = 0;
 
 // True while a leaderboard request is waiting on the server.
@@ -32,6 +33,7 @@ function setStatus(msg, isError = false) {
   statusEl.classList.toggle("error", isError);
 }
 
+// Builds the session id the backend stores data under, e.g. "monza_2024_race".
 function slugify(...parts) {
   return parts
     .join("_")
@@ -48,13 +50,15 @@ function formatTime(seconds) {
   return `${sign}${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+// fetch() + JSON parsing. Throws with the server's error message if the request failed,
+// so callers can just show err.message.
 async function fetchJSON(url, options) {
   const res = await fetch(url, options);
   let body = null;
   try {
     body = await res.json();
   } catch (_) {
-    // no body
+    // Response had no JSON body (common for some errors), keep body as null.
   }
   if (!res.ok) {
     const detail = (body && body.detail) || res.statusText;
@@ -112,7 +116,7 @@ async function loadMeetings() {
       opt.value = m.meeting_key;
       opt.textContent = label;
       opt.dataset.location = m.location;
-      opt.disabled = upcoming;
+      opt.disabled = upcoming; // No data to replay until it has happened
       meetingSelect.appendChild(opt);
     }
     meetingSelect.disabled = false;
@@ -198,7 +202,8 @@ async function renderLeaderboard() {
   timeLabel.textContent = formatTime(simTime);
   scrubber.value = simTime;
 
-  // This call's ticket number (see the explanation above latestRequestId).
+  // Take the next request number. If another request starts before this one
+  // finishes, isStale() becomes true and this one's result gets thrown away.
   latestRequestId += 1;
   const thisRequestId = latestRequestId;
   const isStale = () => thisRequestId !== latestRequestId;
@@ -210,12 +215,13 @@ async function renderLeaderboard() {
       `/leaderboard?session_id=${encodeURIComponent(currentSessionId)}&time_sec=${requestedTime}&session_type=${encodeURIComponent(currentSessionType || "")}`
     );
 
-    // Our response arrived late — a newer request already replaced us. Stop.
+    // Response arrived late, after a newer request was made. Ignore it.
     if (isStale()) return;
 
     leaderboardBody.innerHTML = "";
     for (const row of data.leaderboard) {
       const delta = formatDelta(row.delta);
+      // Outside a Race, P1 shows their fastest lap instead of "Leader".
       const gapText =
         row.position === 1 && currentSessionType !== "Race"
           ? formatLapTime(row.best_lap)
@@ -225,7 +231,7 @@ async function renderLeaderboard() {
         <td class="pos">${row.position ?? "—"}</td>
         <td class="delta-col ${delta.cls}">${delta.text}</td>
         <td class="gap-col">${gapText}</td>
-        <td>${row.code ?? "—"}</td>
+        <td class="code-col">${teamBadgeHTML(row.team)}${row.code ?? "—"}</td>
         <td>${row.name ?? row.driver}</td>
         <td>${row.team ?? "—"}</td>
         <td>${row.lap ?? 0}</td>
@@ -237,10 +243,12 @@ async function renderLeaderboard() {
     if (isStale()) return;
     setStatus(`Failed to fetch leaderboard: ${err.message}`, true);
   } finally {
+    // Only the newest request clears the flag; a newer one may still be waiting.
     if (!isStale()) isFetchingLeaderboard = false;
   }
 }
 
+// delta = places gained (+) or lost (-) since the starting grid.
 function formatDelta(delta) {
   if (delta === null || delta === undefined) return { text: "—", cls: "" };
   if (delta === 0) return { text: "+0", cls: "delta-even" };
@@ -275,8 +283,10 @@ function stopPlayback() {
 function startPlayback() {
   playing = true;
   playBtn.textContent = "⏸ Pause";
+  // Every 0.5s of real time, move the race clock forward 0.5s × speed.
   tickHandle = setInterval(async () => {
-    // Skip this tick if the previous request hasn't come back yet.
+    // Skip this tick while the last request is still loading, so slow
+    // replies don't pile up and make the leaderboard jump around.
     if (isFetchingLeaderboard) return;
     const speed = Number(speedSelect.value);
     simTime += speed * 0.5;
@@ -310,6 +320,8 @@ scrubber.addEventListener("input", () => {
   stopPlayback();
   simTime = Number(scrubber.value);
   timeLabel.textContent = formatTime(simTime);
+  // Wait until dragging pauses for 120ms before asking the server,
+  // instead of sending a request for every pixel the slider moves.
   clearTimeout(scrubDebounce);
   scrubDebounce = setTimeout(renderLeaderboard, 120);
 });

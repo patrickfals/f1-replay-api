@@ -179,6 +179,35 @@ button:disabled {
   background: #1b2030;
 }
 
+.leaderboard .code-col {
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+}
+
+.team-badge {
+  display: inline-block;
+  width: 2rem;
+  height: 2rem;
+  line-height: 2rem;
+  margin-right: 0.4em;
+  border-radius: 50%;
+  text-align: center;
+  vertical-align: middle;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.team-badge-logo {
+  display: inline-block;
+  width: 2rem;
+  height: 2rem;
+  margin-right: 0.4em;
+  border-radius: 6px;
+  vertical-align: middle;
+  object-fit: contain;
+}
+
 .leaderboard .delta-col {
   display: none;
   font-variant-numeric: tabular-nums;
