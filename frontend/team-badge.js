@@ -1,7 +1,3 @@
-// The badge shown before each driver's code on the leaderboard.
-// `match` is tested against the team name from the API, so one entry can also
-// cover a team's older names. Teams with a `logo` show the image; the rest show
-// `abbr` on a `color` background (`dark: true` = dark text, for light colors).
 const TEAM_BADGES = [
   { match: /red bull/i, abbr: "RBR", color: "#3671C6", logo: "assets/team-logos/redbull.png" },
   { match: /ferrari/i, abbr: "FER", color: "#E8002D", logo: "assets/team-logos/ferrari.png" },

@@ -15,6 +15,7 @@ const leaderboardTable = document.getElementById("leaderboardTable");
 
 let currentSessionId = null;
 let currentSessionType = null;
+let racePoints = [];
 let minTime = 0;
 let maxTime = 0;
 let simTime = 0;
@@ -176,6 +177,9 @@ async function loadSession() {
 
     currentSessionId = data.session_id;
     currentSessionType = sessionOpt.dataset.sessionType;
+    racePoints = sessionOpt.dataset.sessionName === "Sprint"
+      ? [8, 7, 6, 5, 4, 3, 2, 1]
+      : [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
     leaderboardTable.classList.toggle("is-race", currentSessionType === "Race");
     // The backend only accepts time_sec >= 0; clamp away any pre-start (formation lap) events.
     minTime = Math.max(0, data.time_range[0] ?? 0);
@@ -219,6 +223,11 @@ async function renderLeaderboard() {
     if (isStale()) return;
 
     leaderboardBody.innerHTML = "";
+    // Top 3 by championship total get gold/silver/bronze; ties go to the driver ahead on track.
+    const podium = data.leaderboard
+      .filter(r => champTotal(r) !== null)
+      .sort((a, b) => champTotal(b) - champTotal(a) || a.position - b.position)
+      .slice(0, 3);
     for (const row of data.leaderboard) {
       const delta = formatDelta(row.delta);
       // Outside a Race, P1 shows their fastest lap instead of "Leader".
@@ -228,14 +237,14 @@ async function renderLeaderboard() {
           : formatGap(row.gap_to_leader, row.position);
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td class="pos">${row.position ?? "—"}</td>
+        <td class="pos" style="--team:${teamColor(row.team)}">${row.position ?? "—"}</td>
         <td class="delta-col ${delta.cls}">${delta.text}</td>
         <td class="gap-col">${gapText}</td>
-        <td class="code-col">${teamBadgeHTML(row.team)}${row.code ?? "—"}</td>
-        <td>${row.name ?? row.driver}</td>
-        <td>${row.team ?? "—"}</td>
+        <td class="code-col"><span>${teamBadgeHTML(row.team)}${row.code ?? "—"}</span></td>
+        <td class="driver-col">${row.name ?? row.driver}<span class="team-sub">${row.team ?? ""}</span></td>
         <td>${row.lap ?? 0}</td>
         <td>${row.pits ?? 0}</td>
+        <td class="pts-col">${formatPoints(row, podium.indexOf(row))}</td>
       `;
       leaderboardBody.appendChild(tr);
     }
@@ -255,6 +264,31 @@ function formatDelta(delta) {
   return delta > 0
     ? { text: `+${delta}`, cls: "delta-up" }
     : { text: `${delta}`, cls: "delta-down" };
+}
+
+// Championship points before the race + points for the current position, e.g. "75+6=81".
+function formatPoints(row, rank) {
+  if (row.position === null || row.position === undefined) return "—";
+  const gain = racePoints[row.position - 1] ?? 0;
+  const start = row.points_start;
+  if (start === null || start === undefined) return gain ? `<span class="pts-gain">+${gain}</span>` : "—";
+  const medal = ["pts-gold", "pts-silver", "pts-bronze"][rank] ?? "";
+  // Same four slots on every row so the totals line up; no gain = total only.
+  return `<span class="pts-eqn">
+    <span class="pts-start">${gain ? start : ""}</span><span class="pts-gain">${gain ? `+${gain}` : ""}</span><span class="pts-eq">${gain ? "=" : ""}</span><span class="pts-total ${gain ? "" : "pts-flat"} ${medal}">${start + gain}</span>
+  </span>`;
+}
+
+// Team color for the stripe at the start of each row.
+function teamColor(team) {
+  return TEAM_BADGES.find(t => team && t.match.test(team))?.color ?? "transparent";
+}
+
+// Projected championship total, or null if unknown.
+function champTotal(row) {
+  if (row.position === null || row.position === undefined) return null;
+  if (row.points_start === null || row.points_start === undefined) return null;
+  return row.points_start + (racePoints[row.position - 1] ?? 0);
 }
 
 function formatGap(gap, position) {

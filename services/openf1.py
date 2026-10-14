@@ -221,4 +221,14 @@ def fetch_drivers(openf1_session_key: int):
 
     resp = requests.get(url, params=params, timeout=30)
     resp.raise_for_status()
-    return resp.json()
+    drivers = resp.json()
+
+    # Championship points going into this session (Race/Sprint only).
+    try:
+        champ = requests.get(f"{OPENF1_BASE}/championship_drivers", params=params, timeout=30).json()
+        points = {c["driver_number"]: c["points_start"] for c in champ}
+    except Exception:
+        points = {}
+    for d in drivers:
+        d["points_start"] = points.get(d.get("driver_number"))
+    return drivers

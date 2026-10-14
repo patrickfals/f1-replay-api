@@ -59,6 +59,13 @@
 
       <input type="range" id="scrubber" min="0" max="0" value="0" step="1" />
 
+      <p class="pts-legend">
+        Championship
+        <span class="pts-gold">● Leader</span>
+        <span class="pts-silver">● 2nd</span>
+        <span class="pts-bronze">● 3rd</span>
+      </p>
+
       <div class="table-scroll">
         <table class="leaderboard" id="leaderboardTable">
           <thead>
@@ -68,9 +75,9 @@
               <th class="gap-col">Gap</th>
               <th>Code</th>
               <th>Driver</th>
-              <th>Team</th>
               <th>Lap</th>
               <th>Pits</th>
+              <th class="pts-col">Champ. Pts</th>
             </tr>
           </thead>
           <tbody id="leaderboardBody"></tbody>

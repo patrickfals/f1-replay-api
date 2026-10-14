@@ -161,6 +161,7 @@ button:disabled {
   text-align: left;
   padding: 0.5rem 0.6rem;
   border-bottom: 1px solid var(--border);
+  vertical-align: middle;
 }
 
 .leaderboard th {
@@ -170,9 +171,21 @@ button:disabled {
   letter-spacing: 0.04em;
 }
 
+/* Team-colored stripe down the left edge of each row. */
 .leaderboard td.pos {
   font-weight: 700;
-  color: var(--accent);
+  box-shadow: inset 4px 0 0 var(--team);
+  padding-left: 1rem;
+}
+
+.leaderboard .driver-col {
+  white-space: nowrap;
+}
+
+.team-sub {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--muted);
 }
 
 .leaderboard tr:hover td {
@@ -181,7 +194,10 @@ button:disabled {
 
 .leaderboard .code-col {
   white-space: nowrap;
-  display: flex;
+}
+
+.leaderboard .code-col > span {
+  display: inline-flex;
   align-items: center;
 }
 
@@ -208,15 +224,54 @@ button:disabled {
   object-fit: contain;
 }
 
-.leaderboard .delta-col {
+.leaderboard .delta-col,
+.leaderboard .pts-col {
   display: none;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
 
-.leaderboard.is-race .delta-col {
+.leaderboard.is-race .delta-col,
+.leaderboard.is-race .pts-col {
   display: table-cell;
 }
+
+.leaderboard .pts-col {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.pts-start { color: var(--muted); }
+.pts-gain { color: #2ecc71; }
+.pts-eq { color: var(--muted); }
+/* Fixed-width slots so the championship standings line up row to row. */
+.pts-eqn { display: inline-flex; align-items: center; }
+.pts-eqn .pts-start { width: 3ch; text-align: right; }
+.pts-eqn .pts-gain { width: 4ch; text-align: center; }
+.pts-eqn .pts-eq { width: 1.5ch; text-align: center; }
+.pts-total {
+  width: 3ch;
+  margin-left: 0.3em;
+  text-align: center;
+  color: var(--text);
+}
+.pts-flat { color: var(--muted); }
+/* Top 3 in the championship. */
+.pts-gold, .pts-silver, .pts-bronze { font-weight: 800; font-size: 1.1em; }
+.pts-gold { color: #ffd84a; text-shadow: 0 0 10px rgba(255, 200, 0, 0.7); }
+.pts-silver { color: #b9c9e6; text-shadow: 0 0 10px rgba(150, 185, 255, 0.85); }
+.pts-bronze { color: #ff9f4a; text-shadow: 0 0 10px rgba(255, 130, 40, 0.7); }
+
+/* Key for the medal colors; races only. */
+.pts-legend {
+  display: none;
+  margin: 0 0 0.75rem;
+  text-align: right;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.player:has(.leaderboard.is-race) .pts-legend { display: block; }
+.pts-legend span { margin-left: 0.8em; font-size: 1em; font-weight: 600; text-shadow: none; }
 
 .leaderboard .gap-col {
   font-variant-numeric: tabular-nums;
@@ -239,4 +294,17 @@ button:disabled {
   .picker {
     grid-template-columns: 1fr;
   }
+  header { padding: 1rem 1rem 0.5rem; }
+  h1 { font-size: 1.5rem; }
+  .subtitle { display: none; }
+  main { padding: 0 0.75rem 2rem; }
+  .picker, .player { padding: 1rem; }
+  .leaderboard { font-size: 0.85rem; }
+  .leaderboard th, .leaderboard td { padding: 0.4rem 0.3rem; }
+  .leaderboard td.pos { padding-left: 0.6rem; }
+  /* Drop Driver and Pits */
+  .leaderboard :is(th, td):is(:nth-child(5), :nth-child(7)) { display: none; }
+  .team-badge, .team-badge-logo { width: 1.5rem; height: 1.5rem; line-height: 1.5rem; font-size: 0.6rem; }
+  /* Points: "+25 43" */
+  .pts-eqn .pts-start, .pts-eqn .pts-eq { display: none; }
 }

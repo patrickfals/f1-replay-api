@@ -155,6 +155,7 @@ def leaderboard(
                 "code": meta.get("code"),
                 "name": meta.get("name"),
                 "team": meta.get("team"),
+                "points_start": meta.get("points_start"),
                 "position": info.get("position"),
                 "start_position": starts.get(driver),
                 "lap": info.get("lap"),

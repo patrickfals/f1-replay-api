@@ -53,4 +53,6 @@ def init_db() -> None:
         existing_columns = {row["name"] for row in conn.execute("PRAGMA table_info(drivers)")}
         if "team" not in existing_columns:
             conn.execute("ALTER TABLE drivers ADD COLUMN team TEXT")
+        if "points_start" not in existing_columns:
+            conn.execute("ALTER TABLE drivers ADD COLUMN points_start REAL")
 

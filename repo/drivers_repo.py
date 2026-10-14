@@ -38,12 +38,13 @@ def upsert_drivers(session_id: str, rows: List[Dict[str, Any]]) -> int:
 
             conn.execute(
                 """
-                INSERT INTO drivers (session_id, driver, code, name, team)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO drivers (session_id, driver, code, name, team, points_start)
+                VALUES (?, ?, ?, ?, ?, ?)
                 ON CONFLICT(session_id, driver) DO UPDATE SET
                     code=excluded.code,
                     name=excluded.name,
-                    team=excluded.team
+                    team=excluded.team,
+                    points_start=excluded.points_start
                 """,
                 (
                     session_id,
@@ -51,6 +52,7 @@ def upsert_drivers(session_id: str, rows: List[Dict[str, Any]]) -> int:
                     code,
                     name,
                     team,
+                    r.get("points_start"),
                 ),
             )
             inserted += 1
@@ -62,8 +64,8 @@ def get_driver_map(session_id: str) -> Dict[str, Dict[str, Optional[str]]]:
     """Return a mapping like: {"1": {"code": "VER", "name": "Max Verstappen", "team": "Red Bull Racing"}, ...}"""
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT driver, code, name, team FROM drivers WHERE session_id = ?",
+            "SELECT driver, code, name, team, points_start FROM drivers WHERE session_id = ?",
             (session_id,),
         ).fetchall()
 
-    return {r["driver"]: {"code": r["code"], "name": r["name"], "team": r["team"]} for r in rows}
+    return {r["driver"]: dict(r) for r in rows}
